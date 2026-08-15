@@ -1,0 +1,13 @@
+# Friction Log — what a learning companion would have caught
+
+Format: [date] [stage] what stalled me, what I was missing, what would have unblocked me faster.
+
+<!-- log every stall, even small ones — this is user research for the companion idea -->
+
+[Aug 14] [micrograd — derivative definition] Stalled ~1h on the formula (d(c+h) − d(c))/h. Root causes, found only after many rounds of re-asking: (1) read d(c+h) as multiplication, not "evaluate d at c+h" — didn't know math function notation IS a function call; (2) letter collision — d used as both the output's name and in dd/dc notation, c as both the parameter slot and the variable. Unblocked by: concrete numbers first (e=2, c=3, h=0.001), then "def d(c): return c + e — now what's d(c+h)?" — programming framing landed instantly. Categories: prerequisite gap; repeated follow-up questions; AI gave too much detail before finding the actual gap.
+
+[Aug 14] [micrograd — notebook ghost bug] draw_dot(L) crashed with 'float' has no _prev, but the class on screen was correct. Cause: stale kernel state — L was built by an older buggy version of the class; fixed the code, never rebuilt the object. Fixed by Restart + Run All. Category not in the protocol's list: state desync between what's on screen and what's in memory. A companion watching the session would have seen the class redefined after L was created and said so. (Also: this is the .ipynb tax — a .py run top-to-bottom can't desync from itself.)
+
+[Aug 14] [micrograd — backward()] Hit the blank page and asked the AI for "boilerplate" for backward() — i.e., asked it to do the exercise. Caught only because the no-code rule was pre-committed in HYPOTHESIS.md. This is the protocol's own category: "people mainly want AI to finish the work rather than help them learn" — felt the pull firsthand. What I actually needed was the Python closure syntax (a prerequisite), not the algorithm.
+
+[Aug 14] [micrograd — writing the closures] WORKAROUND FOUND: translating math to code was hard until I hand-wrote the name mapping (a = self, b = other, c = out) and drew the flow diagram on paper as a reference. Worked immediately. Why: the stall was juggling two naming systems in my head — externalizing the mapping freed working memory for the logic. Same root cause as the derivative-notation stall (representation collision). Companion implication: a tool could auto-generate and pin exactly this — "here's the mapping between the video's math symbols and your code's variable names" — the moment you start implementing something you just watched. Protocol categories: workaround created; small tool I naturally wished existed.

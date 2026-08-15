@@ -1,0 +1,19 @@
+# env
+.venv/
+__pycache__/
+*.pyc
+.python-version
+
+# notebooks
+.ipynb_checkpoints/
+
+# data & artifacts (too big for git)
+data/
+*.pt
+*.bin
+*.model
+wandb/
+runs/
+
+# os
+.DS_Store
