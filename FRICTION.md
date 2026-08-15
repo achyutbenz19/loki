@@ -1,5 +1,7 @@
 # Friction Log — what a learning companion would have caught
 
+**Honest accounting (Day 1, preserved from NOTES.md):** From memory: Value class core, _backward closures (struggled on add, referenced after real struggle). Copied, and that's fine: imports, viz helpers, constants. Referenced: topological sort — asterisk later cleared via the ordering-invariant oral test and the working backward(). Operator convenience family transcribed from the open reference.
+
 Format: [date] [stage] what stalled me, what I was missing, what would have unblocked me faster.
 
 <!-- log every stall, even small ones — this is user research for the companion idea -->
