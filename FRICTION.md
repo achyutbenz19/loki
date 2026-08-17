@@ -64,3 +64,38 @@ Draft 1: out = self (no new node — would CLOBBER self's own _backward from its
 [Aug 16] [MILESTONE — beat Karpathy's challenge] MLP (makemore part 2) tuned to dev 2.1678 / test 2.1639 — under the lecture's 2.17 challenge line, on honest splits, test touched once, dev/test agreeing within 0.004. Config was my own, not the lecture's: block_size 4 (extended context — a knob the video never touches), emb 12, hidden 120, batch 64, lr 0.082 from my own sweep, plus my own idea implemented: last-5%-of-steps lr decay to 1/10. The day also contained: the three-zone training-loop lesson (params persist, computation rebuilds — learned via 100 disposable networks), partial-graph flags-mid-forward trap, context-lag sampler bug, and the dev-contamination catch (first "honest" number was trained on all words). Tuning lesson that stuck: most knob-turns lose (hidden 130 run went BACKWARDS to 2.216) — the leaderboard's record of the best config is what saves you.
 
 [Aug 15] [keepdim / broadcasting — the longest concept fight of the sprint] Took ~6 rounds of explanation to land, and the ARC of what finally worked is the finding: (1) worked examples with tiny numbers — partial; (2) live-executed shape demos across 2D/3D/4D — partial; (3) "dims are bracket depth, dim 0 is down, dim 1 is across, don't map to x/y (matrices are (row,col) = (y,x), reversed)" — fixed the foundation, which was the ACTUAL missing prerequisite; (4) a quiz with committed answers — verified the foundation; (5) rules of thumb ("keepdim always", "sum meets its matrix on the same line") — REJECTED by me as hardcoding, correctly; (6) what actually landed: the derivation — say the math in English ("each element divided by its row's total"), derive what shape delivers that under broadcasting (varies with i, constant across j → standing column), then keepdim is just the shortest spelling of the derived shape, alongside unsqueeze/reshape. Companion implications: the real gap was TWO levels below the question asked (dims themselves, not keepdim); rules-of-thumb offered before derivations get rejected by learners who want to own the reasoning; the "explain simpler" loop terminated only when the explanation switched from rules to derivation. Categories: prerequisite gap (deep), repeated follow-up questions, AI gave too much detail before finding the gap.
+
+---
+
+## FULL-CHAT SWEEP (re-read of the entire week, Aug 17) — everything previously missed
+
+[Aug 13 — BACKFILL, pre-Loki learning phase] The informal run of the same experiment, never logged:
+- Dead resource link: Sutton's site (incompleteideas.net) was down; needed a verified mirror hunted down + the PDF handed to me. Resources rot; a companion should verify links before recommending.
+- Summaries pass for understanding until quizzed: read summaries of Karpathy's deep-dive, FELT understood, then a 10-question gate exposed real gaps (jagged intelligence mechanism, the forgetting mechanism). Recognition vs recall, discovered empirically — the quiz-then-patch loop became the whole week's method.
+- Needed "in simpler terms" re-explanation loops repeatedly (bitter lesson, era of experience) — explanations only terminated when switched from rules to derivations or to MY domain (Hanji examples).
+- Every concept that stuck, stuck by mapping to lived experience (reward hacking → Hanji goalpost-moving). Learning style identified: experience-anchored, build-first.
+
+[Aug 14 — tooling frictions, never filed]
+- Cursor kernel handshake hung on "connecting to venv" with ipykernel provably installed — fixed only by explicitly picking the interpreter in the kernel picker. Environment was fine; the UI handshake was the blocker.
+- Interpreter-picker anxiety: 5 Pythons listed, wanted to delete them all; a dependents-check showed every one had live consumers (incl. Hanji's Extract worktrees — deleting would have broken production work mid-OurFirm). Lesson: check evidence before destructive cleanup; the picker shows inventory, not clutter.
+- graphviz python package installed but the `dot` binary missing — two-part dependency invisible until render time.
+
+[Aug 15 — bigram day, missed specimens]
+- Smoothing without re-normalizing: P = (N+1).float() and STOPPED — P became raw counts. Caught by TWO invariant violations on my own printout: "prob = 4411.0" and a NEGATIVE avg NLL (impossible: probs ≤ 1 → NLL ≥ 0). Plausible-looking numbers, screaming invariants. Negative-NLL is now a permanent alarm bell.
+- rand vs randn: initialized W with torch.rand (uniform [0,1), all positive) — but logits are log-counts and NEED both signs. One letter, different distribution, silently bland outputs. API-naming trap.
+
+[Aug 16 — MLP day, missed specimens]
+- parameters = [W1 + B1 + W2 + B2]: plus signs inside brackets = TENSOR ADDITION, not list building — would broadcast-add weight matrices then crash on shapes. The list-vs-math meaning of + (day-1 lesson) resurfacing at tensor scale.
+- Sampler concept gap: "how do I pass the context to the model?" — first attempt fed the TRAINING emb (228k rows) into the sampler; multinomial choked ("228114 elements cannot be converted to Scalar"). Missing model: the net has NO memory — you hand it the current window as a batch of one, every step. This is autoregressive generation, derived from a crash.
+- Small-symbol family additions (each cost minutes, all silent-ish): W1 = torch.randn(()) — empty shape = scalar, not matrix; p.grad = 0 raises TypeError (API wants None, concept was right); "backward through the graph a second time" when re-running backward on a stale forward — one backward per forward, graphs are freed on use.
+
+[Aug 17 — bn day, missed specimens]
+- Config vs its init-tweaks must agree: uncommented the no-BN layers list but the humbling line still said layers[-1].gamma — AttributeError, and worse, the crash left a PATCHWORK of stale outputs (diag1 from one config, diag2 from another) that looked like results. A/B experiments need the full chain rerun in order, every time.
+- Reference material can spoil the exercise: the GitHub part-4 notebook is the SOLVED version; the honest starter is the separately-linked Colab. Caught before installing the spoiler. Companion note: "the official notebook" is ambiguous between lesson and answer key.
+
+## RECURRING FAMILIES — tally after 4 days (for the Friday readout)
+1. **State desync** (~7 incidents): screen-vs-kernel ghosts x2, exec-None stale outputs repeatedly, eaten edit via tab reload, A/B patchwork, my markdown corruption. The single biggest recurring loss of time. Strongest possible companion feature: track what's edited-but-not-run, warn on stale reads.
+2. **Representation/naming collisions** (~6): d(c+h) as multiplication, a/self/b/other mapping, `other` changing species across methods, xs/ys soup, paper σ² vs code std, P meaning two models. Fix that works on me: externalize the mapping, written down, every time.
+3. **Silent failures** (~8): zip truncation, .data boundary both directions, partial-graph training, variance-divide bug (absorbed by bngain!), context-lag sampler, doubled counts, uniform-rand init. The eval/invariant checks are the only reliable detector — negative NLL, rows-sum-to-1, cmp, predicted param counts.
+4. **Accidental correctness** (~4): closure-less relu passing by luck, bngain absorbing the variance bug, long-run washing out swapped buffer inits, square-matrix keepdim silence. Tests pass ≠ right-by-design; review catches what verifiers can't.
+5. **Prerequisite gaps surfaced ONLY by building** (~10): function notation, closures, dims, embeddings-as-lookup, signatures, cross_entropy semantics... Zero of them blocked watching; all of them blocked building. The core finding of the whole experiment so far.
