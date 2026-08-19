@@ -1,2 +1,2 @@
 # %%
-# Day 4 — attention + transformer + GPT, from memory. (.py like nanoGPT; CS336 tests import this)
+# attention + transformer + GPT — final consolidation from gpt-dev.ipynb. (.py like nanoGPT; CS336 tests import this)
