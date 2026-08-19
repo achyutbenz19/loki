@@ -14,7 +14,7 @@ Spine — Karpathy, Neural Networks: Zero to Hero (karpathy.ai/zero-to-hero.html
 4. Let's build the GPT Tokenizer (2h13m) → `04-tokenizer/`
 
 Verifier — Stanford CS336 `assignment1-basics` (github.com/stanford-cs336/assignment1-basics):
-clone separately, wire my implementations into `tests/adapters.py`, `uv run pytest` is the ground truth. Train on their TinyStories data.
+cloned at `~/Projects/cs336-basics` (separate repo), implementations go in its `cs336_basics/`, wired through `tests/adapters.py`. `uv run pytest` is the ground truth — 48 tests. Plan, deltas from Karpathy, and the running score: `05-cs336/PLAN.md`.
 
 Stretch (week 2) — Let's reproduce GPT-2 (124M) (separate Karpathy video), then SFT toward a chat model.
 
