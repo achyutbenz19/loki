@@ -75,10 +75,10 @@ class MultiHeadAttention(nn.Module):
         return torch.cat([head(x) for head in self.heads], dim=-1)
 
 class FeedForward(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, n_embed) -> None:
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(N_EMBD, N_EMBD),
+            nn.Linear(n_embed, n_embed),
             nn.ReLU()
         )
     
@@ -99,7 +99,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, N_EMBD) # (65 unique text, embedding dimension)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD) # (BLOCK_SIZE positions in X, embedding dimension))
         self.sa_heads = MultiHeadAttention(head_size, HEAD_NUMBER)
-        self.ffn = FeedForward()
+        self.ffn = FeedForward(N_EMBD)
         self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE) # output -> (embedding dimension, choose 1 out of 65 unique text)
     
     def forward(self, x, target=None):
