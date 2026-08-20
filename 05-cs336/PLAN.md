@@ -4,17 +4,21 @@ HYPOTHESIS.md says the gate is "the CS336 tests pass." This is the plan for that
 
 ## Where it lives
 
-Cloned separately (per README), NOT inside loki:
+Inside loki, so my implementations live in my own repo with history:
 
 ```
-~/Projects/cs336-basics/          <- the assignment repo, its own git repo
-  tests/adapters.py               <- the 21 functions I fill in (the wiring)
-  cs336_basics/                   <- MY implementations go here (installed package)
-  data/                           <- TinyStories (gitignored)
-~/Projects/loki/05-cs336/         <- this plan + results. no code.
+05-cs336/
+  PLAN.md                         <- this file: plan, deltas, running score
+  assignment1-basics/             <- the assignment, vendored (upstream .git dropped)
+    tests/adapters.py             <- the 21 functions I fill in (the wiring)
+    cs336_basics/                 <- MY implementations go here (installed package)
+    data/                         <- TinyStories 2.1 GB (gitignored)
+    .venv/                        <- uv env (gitignored)
 ```
 
-Run: `cd ~/Projects/cs336-basics && uv run pytest`
+Upstream: github.com/stanford-cs336/assignment1-basics @ a158843 (Aug 19, 2026). Vendored rather than submoduled — one-shot assignment, and I want my code in my repo.
+
+Run: `cd 05-cs336/assignment1-basics && uv sync && uv run pytest`
 
 ## Status (set up Aug 19)
 

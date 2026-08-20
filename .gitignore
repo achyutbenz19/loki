@@ -17,3 +17,9 @@ runs/
 
 # os
 .DS_Store
+
+# cs336 assignment: data + env, never committed
+05-cs336/assignment1-basics/data/
+05-cs336/assignment1-basics/.venv/
+05-cs336/assignment1-basics/**/__pycache__/
+05-cs336/assignment1-basics/.pytest_cache/
