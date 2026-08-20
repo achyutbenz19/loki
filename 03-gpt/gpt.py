@@ -12,21 +12,25 @@ text = load_data()
 unique_text = sorted(set(text))
 
 # Hyperparams
-BATCH_SIZE = 32
-HEAD_NUMBER = 4
-BLOCK_SIZE = 8
-N_EMBD = 32 # Embedding dimension
+BATCH_SIZE = 64
+HEAD_NUMBER = 6
+BLOCK_SIZE = 256
+N_EMBD = 384 # Embedding dimension
 EVAL_ITERS = 200
-LEARNING_RATE = 1e-3
+EVAL_INTERVAL = 500
+N_LAYER = 6
+LEARNING_RATE = 3e-4
 LEARNING_STEPS = 5000
 VOCAB_SIZE = len(unique_text)
+DROPOUT_RATE = 0.2 # To prevent overfit
+DEVICE = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
 
 def get_batch(split):
     data = train_data if split == 'train' else val_data
     ix = torch.randint(len(data) - BLOCK_SIZE, (BATCH_SIZE,))
     x = torch.stack([data[i:i+BLOCK_SIZE] for i in ix]) # 
     y = torch.stack([data[i+1:i+BLOCK_SIZE+1] for i in ix])
-    return x, y
+    return x.to(DEVICE), y.to(DEVICE)
 
 @torch.no_grad()
 def estimate_loss(model):
@@ -50,6 +54,7 @@ class Head(nn.Module):
         self.value = nn.Linear(N_EMBD, self.head_size, bias=False)
         self.query = nn.Linear(N_EMBD, self.head_size, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(BLOCK_SIZE, BLOCK_SIZE)))
+        self.dropout = nn.Dropout(DROPOUT_RATE)
     
     def forward(self, x):
         B, T, C = x.shape
@@ -62,6 +67,8 @@ class Head(nn.Module):
         wei = wei / (self.head_size) ** 0.5
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1)
+        wei = self.dropout(wei)
+
         out = wei @ v
         return out
 
@@ -71,10 +78,11 @@ class MultiHeadAttention(nn.Module):
         self.head_size = head_size
         self.heads = nn.ModuleList(Head(self.head_size) for _ in range(HEAD_NUMBER))
         self.proj = nn.Linear(N_EMBD, N_EMBD)
+        self.dropout = nn.Dropout(DROPOUT_RATE)
     
     def forward(self, x):
         x = torch.cat([head(x) for head in self.heads], dim=-1)
-        out = self.proj(x)
+        out = self.dropout(self.proj(x))
         return out
 
 class FeedForward(nn.Module):
@@ -84,6 +92,7 @@ class FeedForward(nn.Module):
             nn.Linear(n_embed, 4 * n_embed),
             nn.ReLU(),
             nn.Linear(4 * n_embed, n_embed),
+            nn.Dropout(DROPOUT_RATE)
         )
     
     def forward(self, x):
@@ -111,9 +120,7 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, N_EMBD) # (65 unique text, embedding dimension)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD) # (BLOCK_SIZE positions in X, embedding dimension))
         self.blocks = nn.Sequential(
-            Block(HEAD_NUMBER, N_EMBD),
-            Block(HEAD_NUMBER, N_EMBD),
-            Block(HEAD_NUMBER, N_EMBD), 
+            *[Block(HEAD_NUMBER, N_EMBD) for _ in range(N_LAYER)],
             nn.LayerNorm(N_EMBD)
         )
         self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE) # output -> (embedding dimension, choose 1 out of 65 unique text)
@@ -121,7 +128,7 @@ class BigramLanguageModel(nn.Module):
     def forward(self, x, target=None):
         B, T = x.shape
         token_embedding = self.token_embedding_table(x) # (B, T, N_EMBD)
-        position_embedding = self.position_embedding_table(torch.arange(T)) # (T, N_EMBD)
+        position_embedding = self.position_embedding_table(torch.arange(T, device=x.device)) # (T, N_EMBD)
         x = token_embedding + position_embedding
         x = self.blocks(x)
         logit = self.lm_head(x) # (B,T,VOCAB_SIZE)
@@ -147,13 +154,26 @@ class BigramLanguageModel(nn.Module):
 
 def train(model):
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
-    for _ in range(LEARNING_STEPS):
+    history = []
+    for step in range(LEARNING_STEPS):
+        if step % EVAL_INTERVAL == 0:
+            losses = estimate_loss(model)
+            history.append((step, losses['train'].item(), losses['val'].item()))
+            print(f"step {step}: train {losses['train']:.4f} val {losses['val']:.4f}", flush=True)
         optimizer.zero_grad(set_to_none=True)
         x, y = get_batch('train')
         _, loss = model(x, y)
         loss.backward()
         optimizer.step()
-    print("Loss is ", estimate_loss(model))
+    losses = estimate_loss(model)
+    history.append((LEARNING_STEPS, losses['train'].item(), losses['val'].item()))
+    print("Loss is ", losses, flush=True)
+    here = Path(__file__).parent
+    torch.save(model.state_dict(), here / "gpt_scaled.pt")
+    with open(here / "loss_curve.csv", "w") as f:
+        f.write("step,train,val\n")
+        for st, tr, va in history:
+            f.write(f"{st},{tr:.4f},{va:.4f}\n")
 
 itos= {ch: i for ch, i in enumerate(unique_text)}
 stoi= {i: ch for ch, i in enumerate(unique_text)}
@@ -167,12 +187,16 @@ n = int(0.9 * len(data))
 train_data = data[:n] 
 val_data = data[n:] 
 
-bi = BigramLanguageModel()
+if __name__ == "__main__":
+    bi = BigramLanguageModel().to(DEVICE)
+    print(f"device: {DEVICE} | params: {sum(p.numel() for p in bi.parameters())/1e6:.2f}M")
 
-train(bi)
+    train(bi)
 
-x = encode("Emily is ")
-idx = torch.tensor([x])
-out = bi.generate(idx, 200)[0].tolist()
-print(decode(out))
+    x = encode("Emily is ")
+    idx = torch.tensor([x], device=DEVICE)
+    out = bi.generate(idx, 200)[0].tolist()
+    print(decode(out))
+    big = bi.generate(torch.zeros((1,1), dtype=torch.long, device=DEVICE), 2000)[0].tolist()
+    (Path(__file__).parent / "sample.txt").write_text(decode(big))
 
