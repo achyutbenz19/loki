@@ -1,2 +1,3 @@
 # %%
-# Day 6 (Wed Aug 19) — BPE tokenizer: train, encode, decode, from memory. (.py like minbpe; CS336 tests import this)
+# Day 6 (Thu Aug 20) — BPE tokenizer: train, encode, decode, from memory.
+# (.py like minbpe; CS336 adapters import this)
