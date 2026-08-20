@@ -13,7 +13,7 @@ unique_text = sorted(set(text))
 
 # Hyperparams
 BATCH_SIZE = 32
-HEAD_SIZE = 32
+HEAD_NUMBER = 4
 BLOCK_SIZE = 8
 N_EMBD = 32 # Embedding dimension
 EVAL_ITERS = 200
@@ -65,14 +65,22 @@ class Head(nn.Module):
         out = wei @ v
         return out
 
-class
+class MultiHeadAttention(nn.Module):
+    def __init__(self, head_size, head_number) -> None:
+        super().__init__()
+        self.head_size = head_size
+        self.heads = nn.ModuleList(Head(self.head_size) for _ in range(HEAD_NUMBER))
+    
+    def forward(self, x):
+        return torch.cat([head(x) for head in self.heads], dim=-1)
 
 class BigramLanguageModel(nn.Module):
     def __init__(self) -> None:
         super().__init__()
+        head_size = N_EMBD // HEAD_NUMBER
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, N_EMBD) # (65 unique text, embedding dimension)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD) # (BLOCK_SIZE positions in X, embedding dimension))
-        self.sa_head = Head(HEAD_SIZE)
+        self.sa_heads = MultiHeadAttention(head_size, HEAD_NUMBER)
         self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE) # output -> (embedding dimension, choose 1 out of 65 unique text)
     
     def forward(self, x, target=None):
@@ -80,7 +88,7 @@ class BigramLanguageModel(nn.Module):
         token_embedding = self.token_embedding_table(x) # (B, T, N_EMBD)
         position_embedding = self.position_embedding_table(torch.arange(T)) # (T, N_EMBD)
         x = token_embedding + position_embedding
-        x = self.sa_head(x)
+        x = self.sa_heads(x)
         logit = self.lm_head(x) # (B,T,VOCAB_SIZE)
         
         if target == None:
