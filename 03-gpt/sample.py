@@ -10,7 +10,7 @@ import torch
 
 from gpt import BigramLanguageModel, DEVICE, encode, decode
 
-CKPT = Path(__file__).parent / "ckpt_A_baseline.pt"
+CKPT = Path(__file__).parent / "checkpoints" / "ckpt_A_baseline.pt"
 
 prompt = sys.argv[1] if len(sys.argv) > 1 else None
 n_tokens = int(sys.argv[2]) if len(sys.argv) > 2 else 500
