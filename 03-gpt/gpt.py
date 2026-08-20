@@ -86,20 +86,29 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 class Block(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, head_num, n_embed) -> None:
         super().__init__()
+        head_size = n_embed // head_num
+        self.head_num = head_num
+        self.n_embed = n_embed
+        self.sa_heads = MultiHeadAttention(head_size, head_num)
+        self.ffn = FeedForward(n_embed)
     
     def forward(self, x):
-        pass
+        x = self.sa_heads(x)
+        x = self.ffn(x)
+        return x
 
 class BigramLanguageModel(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        head_size = N_EMBD // HEAD_NUMBER
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, N_EMBD) # (65 unique text, embedding dimension)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD) # (BLOCK_SIZE positions in X, embedding dimension))
-        self.sa_heads = MultiHeadAttention(head_size, HEAD_NUMBER)
-        self.ffn = FeedForward(N_EMBD)
+        self.blocks = nn.Sequential(
+            Block(HEAD_NUMBER, N_EMBD),
+            Block(HEAD_NUMBER, N_EMBD),
+            Block(HEAD_NUMBER, N_EMBD)
+        )
         self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE) # output -> (embedding dimension, choose 1 out of 65 unique text)
     
     def forward(self, x, target=None):
@@ -107,8 +116,7 @@ class BigramLanguageModel(nn.Module):
         token_embedding = self.token_embedding_table(x) # (B, T, N_EMBD)
         position_embedding = self.position_embedding_table(torch.arange(T)) # (T, N_EMBD)
         x = token_embedding + position_embedding
-        x = self.sa_heads(x)
-        x = self.ffn(x)
+        x = self.blocks(x)
         logit = self.lm_head(x) # (B,T,VOCAB_SIZE)
         
         if target == None:
