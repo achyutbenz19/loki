@@ -9,6 +9,7 @@ dependencies = [
     "matplotlib",
     "graphviz",
     "regex",
+    "tiktoken",
     "requests",
     "tqdm",
 ]
