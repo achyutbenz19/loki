@@ -12,7 +12,8 @@ text = load_data()
 unique_text = sorted(set(text))
 
 # Hyperparams
-BATCH_SIZE = 4
+BATCH_SIZE = 32
+HEAD_SIZE = 32
 BLOCK_SIZE = 8
 N_EMBD = 32 # Embedding dimension
 EVAL_ITERS = 200
@@ -35,21 +36,52 @@ def estimate_loss(model):
         losses = torch.zeros(EVAL_ITERS)
         for k in range(EVAL_ITERS):
             X, Y = get_batch(split)
-            logits, loss = model(X, Y)
+            _, loss = model(X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
     return out
 
+class Head(nn.Module):
+    def __init__(self, head_size) -> None:
+        super().__init__()
+        self.head_size = head_size
+        self.key = nn.Linear(N_EMBD, self.head_size, bias=False)
+        self.value = nn.Linear(N_EMBD, self.head_size, bias=False)
+        self.query = nn.Linear(N_EMBD, self.head_size, bias=False)
+        self.register_buffer('tril', torch.tril(torch.ones(BLOCK_SIZE, BLOCK_SIZE)))
+    
+    def forward(self, x):
+        B, T, C = x.shape
+
+        k = self.key(x)
+        q = self.query(x)
+        v = self.value(x)
+
+        wei = q @ k.transpose(-1,-2) # -> (B, T, T)
+        wei = wei / (self.head_size) ** 0.5
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wei = F.softmax(wei, dim=-1)
+        out = wei @ v
+        return out
+
+class
+
 class BigramLanguageModel(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.token_embedding_table = nn.Embedding(VOCAB_SIZE, N_EMBD) # (65 unique text, embedding dimension)
+        self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD) # (BLOCK_SIZE positions in X, embedding dimension))
+        self.sa_head = Head(HEAD_SIZE)
         self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE) # output -> (embedding dimension, choose 1 out of 65 unique text)
     
     def forward(self, x, target=None):
-        token_embedding = self.token_embedding_table(x) # (B,T,N_EMBD)
-        logit = self.lm_head(token_embedding) # (B,T,VOCAB_SIZE)
+        B, T = x.shape
+        token_embedding = self.token_embedding_table(x) # (B, T, N_EMBD)
+        position_embedding = self.position_embedding_table(torch.arange(T)) # (T, N_EMBD)
+        x = token_embedding + position_embedding
+        x = self.sa_head(x)
+        logit = self.lm_head(x) # (B,T,VOCAB_SIZE)
         
         if target == None:
             loss = None
@@ -62,7 +94,8 @@ class BigramLanguageModel(nn.Module):
         
     def generate(self, x, max_token):
         for _ in range(max_token):
-            logit, _ = self(x)
+            x_cond = x[:, -BLOCK_SIZE:]
+            logit, _ = self(x_cond)
             logit = logit[:, -1, :]
             prob = F.softmax(logit, dim=-1)
             sample = torch.multinomial(prob, num_samples=1)
@@ -95,7 +128,7 @@ bi = BigramLanguageModel()
 
 train(bi)
 
-x = encode("ROMEO:")
+x = encode("Emily is ")
 idx = torch.tensor([x])
 out = bi.generate(idx, 200)[0].tolist()
 print(decode(out))
