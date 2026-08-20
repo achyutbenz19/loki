@@ -124,12 +124,12 @@ Infra: creds hunt was its own friction — the GPU-provider key path baked into 
 [Aug 13 — BACKFILL, pre-Loki learning phase] The informal run of the same experiment, never logged:
 - Dead resource link: Sutton's site (incompleteideas.net) was down; needed a verified mirror hunted down + the PDF handed to me. Resources rot; a companion should verify links before recommending.
 - Summaries pass for understanding until quizzed: read summaries of Karpathy's deep-dive, FELT understood, then a 10-question gate exposed real gaps (jagged intelligence mechanism, the forgetting mechanism). Recognition vs recall, discovered empirically — the quiz-then-patch loop became the whole week's method.
-- Needed "in simpler terms" re-explanation loops repeatedly (bitter lesson, era of experience) — explanations only terminated when switched from rules to derivations or to MY domain (Hanji examples).
-- Every concept that stuck, stuck by mapping to lived experience (reward hacking → Hanji goalpost-moving). Learning style identified: experience-anchored, build-first.
+- Needed "in simpler terms" re-explanation loops repeatedly (bitter lesson, era of experience) — explanations only terminated when switched from rules to derivations or to my own work domain.
+- Every concept that stuck, stuck by mapping to lived experience (reward hacking → goalpost-moving I'd seen at work). Learning style identified: experience-anchored, build-first.
 
 [Aug 14 — tooling frictions, never filed]
 - Cursor kernel handshake hung on "connecting to venv" with ipykernel provably installed — fixed only by explicitly picking the interpreter in the kernel picker. Environment was fine; the UI handshake was the blocker.
-- Interpreter-picker anxiety: 5 Pythons listed, wanted to delete them all; a dependents-check showed every one had live consumers (incl. Hanji's Extract worktrees — deleting would have broken production work mid-OurFirm). Lesson: check evidence before destructive cleanup; the picker shows inventory, not clutter.
+- Interpreter-picker anxiety: 5 Pythons listed, wanted to delete them all; a dependents-check showed every one had live consumers (incl. worktrees for live work — deleting would have broken things mid-project). Lesson: check evidence before destructive cleanup; the picker shows inventory, not clutter.
 - graphviz python package installed but the `dot` binary missing — two-part dependency invisible until render time.
 
 [Aug 15 — bigram day, missed specimens]

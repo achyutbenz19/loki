@@ -23,3 +23,8 @@ runs/
 05-cs336/assignment1-basics/.venv/
 05-cs336/assignment1-basics/**/__pycache__/
 05-cs336/assignment1-basics/.pytest_cache/
+
+# cs336: my solutions stay out of the public repo (course integrity)
+05-cs336/assignment1-basics/cs336_basics/*.py
+!05-cs336/assignment1-basics/cs336_basics/__init__.py
+05-cs336/assignment1-basics/tests/adapters.py
