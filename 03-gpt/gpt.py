@@ -97,10 +97,12 @@ class Block(nn.Module):
         self.n_embed = n_embed
         self.sa_heads = MultiHeadAttention(head_size, head_num)
         self.ffn = FeedForward(n_embed)
+        self.ln1 = nn.LayerNorm(N_EMBD)
+        self.ln2 = nn.LayerNorm(N_EMBD)
     
     def forward(self, x):
-        x = x + self.sa_heads(x)
-        x = x + self.ffn(x)
+        x = x + self.sa_heads(self.ln1(x))
+        x = x + self.ffn(self.ln2(x))
         return x
 
 class BigramLanguageModel(nn.Module):
@@ -111,7 +113,8 @@ class BigramLanguageModel(nn.Module):
         self.blocks = nn.Sequential(
             Block(HEAD_NUMBER, N_EMBD),
             Block(HEAD_NUMBER, N_EMBD),
-            Block(HEAD_NUMBER, N_EMBD)
+            Block(HEAD_NUMBER, N_EMBD), 
+            nn.LayerNorm(N_EMBD)
         )
         self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE) # output -> (embedding dimension, choose 1 out of 65 unique text)
     
