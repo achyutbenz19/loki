@@ -1,5 +1,6 @@
 from enum import StrEnum
 from pathlib import Path
+from typing import Dict
 import regex as re
 
 class Pattern(StrEnum):
@@ -10,7 +11,7 @@ VOCAB_SIZE = 276
 GPT2_SPLIT_PATTERN = Pattern.GPT2
 GPT4_SPLIT_PATTERN = Pattern.GPT4
 
-def get_stats(ids, counts=None):
+def get_stats(ids, counts=None) -> Dict:
     stats = {} if counts is None else counts
     for i in zip(ids, ids[1:]):
         stats[i] = stats.get(i, 0) + 1
@@ -33,7 +34,7 @@ class BasicTokenizer():
         self.merges = {}
         self.vocab = {}
 
-    def train(self, text, vocab_size):
+    def train(self, text, vocab_size, verbose=False):
         ids = text.encode("utf-8")
         merge_size = vocab_size - 256
 
@@ -79,15 +80,18 @@ class RegexTokenizer(BasicTokenizer):
         super().__init__()
         self.pattern = re.compile(pattern)
 
-    def train(self, text, vocab_size):
-        ids = text.encode("utf-8")
+    def train(self, text, vocab_size, verbose=False):
+        chunks = self.pattern.findall(text)
+        ids = [list(chunk.encode("utf-8")) for chunk in chunks]
         merge_size = vocab_size - 256
 
         for i in range(merge_size):
-            stats = get_stats(ids)
+            stats = {}
+            for id in ids:
+                stats = get_stats(id, stats)
             pair = max(stats, key=stats.get)
             idx = 256 + i
-            ids = merge(ids, pair, idx)
+            ids = [merge(id, pair, idx) for id in ids] 
             self.merges[pair] = idx
 
         for i in range(256):
@@ -99,27 +103,6 @@ class RegexTokenizer(BasicTokenizer):
 
         return self.vocab, self.merges
     
-    def _encode_chunk(self, ids):
-        """Replay the learned merges on one list of ids, oldest rule first."""
-        while len(ids) >= 2:
-            stats = get_stats(ids)
-            # of the pairs present right now, take the one learned earliest
-            # (inf = not a merge at all, so it can never win)
-            pair = min(stats, key=lambda p: self.merges.get(p, float("inf")))
-            # everything present scored inf -> no rule applies anymore, done
-            if pair not in self.merges:
-                break
-            ids = merge(ids, pair, self.merges[pair])
-        return ids
-
-    def encode(self, text):
-        return self._encode_chunk(list(text.encode("utf-8")))
-
-    def decode(self, ids):
-        tokens = [self.vocab[id] for id in ids]
-        text = b"".join(tokens)
-        return text.decode("utf-8", errors="replace")
-
 def report(tok, text, torture, vocab_size, label):
     tok.train(text, vocab_size)
     enc = tok.encode(text)
@@ -149,9 +132,9 @@ if __name__ == "__main__":
         out = []
         for i in range(256, len(tok.vocab)):
             t = tok.vocab[i].decode("utf-8", errors="replace")
+            body = t[1:] if t.startswith(" ") else t  # gpt4 attaches ONE leading space by design
             kinds = {"alpha" if c.isalpha() else "digit" if c.isdigit()
-                        else "space" if c.isspace() else "punct" for c in t}
-            kinds.discard("punct")
+                        else "space" if c.isspace() else "punct" for c in body}
             if len(kinds) > 1:
                 out.append(tok.vocab[i])
         return out

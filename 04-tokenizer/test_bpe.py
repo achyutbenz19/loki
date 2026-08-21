@@ -91,16 +91,17 @@ def test_regex_roundtrip(s):
 
 
 @rgx
-def test_no_token_crosses_a_category():
-    """The whole point of the split pattern: no merge spans letters+space,
-    letters+digits, or digits+punctuation."""
+def test_no_learned_token_spans_a_chunk_boundary():
+    """The real invariant: every learned token must itself be exactly one chunk
+    under the split pattern. If the pattern would break it in two, BPE was never
+    allowed to build it — so `b'the '` is illegal while `b' the'` and `b"'s"` are
+    both fine (the gpt4 pattern defines them as single chunks)."""
+    import regex as re
     t = trained(bpe.RegexTokenizer, vocab_size=512)
+    pat = bpe.Pattern.GPT4
     for i in range(256, len(t.vocab)):
         s = t.vocab[i].decode("utf-8", errors="replace")
-        kinds = {("alpha" if c.isalpha() else "digit" if c.isdigit() else
-                  "space" if c.isspace() else "punct") for c in s}
-        kinds.discard("punct")  # gpt4 pattern allows leading space before punct runs
-        assert len(kinds) <= 1, f"token {i}={s!r} mixes {kinds}"
+        assert re.findall(pat, s) == [s], f"token {i}={s!r} spans a chunk boundary"
 
 
 @rgx
