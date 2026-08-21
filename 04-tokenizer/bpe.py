@@ -102,6 +102,20 @@ class RegexTokenizer(BasicTokenizer):
             self.vocab[y] = self.vocab[tuple[0]] + self.vocab[tuple[1]]
 
         return self.vocab, self.merges
+
+    def encode_ordinary(self, text):
+        """Encode with no special-token handling: split by the pattern, merge
+        within each chunk, concatenate. Merges never cross a chunk boundary."""
+        ids = []
+        for chunk in self.pattern.findall(text):
+            ids.extend(self._encode_chunk(list(chunk.encode("utf-8"))))
+        return ids
+
+    def register_special_tokens(self, special_tokens):
+        self.special_tokens = special_tokens
+        self.inverse_special_tokens = {v: k for k, v in special_tokens.items()}
+        for idx, token in self.inverse_special_tokens.items():
+            self.vocab[idx] = token.encode("utf-8")
     
 def report(tok, text, torture, vocab_size, label):
     tok.train(text, vocab_size)
