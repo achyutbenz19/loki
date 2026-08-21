@@ -79,6 +79,7 @@ class RegexTokenizer(BasicTokenizer):
     def __init__(self, pattern=Pattern.GPT4):
         super().__init__()
         self.pattern = re.compile(pattern)
+        self.special_tokens = {}
 
     def train(self, text, vocab_size, verbose=False):
         chunks = self.pattern.findall(text)
@@ -103,12 +104,18 @@ class RegexTokenizer(BasicTokenizer):
 
         return self.vocab, self.merges
 
-    def encode_ordinary(self, text):
-        """Encode with no special-token handling: split by the pattern, merge
-        within each chunk, concatenate. Merges never cross a chunk boundary."""
+    def encode(self, text, allowed_special="none"):
+        """Split by the pattern, merge within each chunk, concatenate.
+        Merges never cross a chunk boundary."""
+        active = self.special_tokens if allowed_special == "all" else {}
+        parts = re.split("(" + "|".join(re.escape(k) for k in active) + ")", text) if active else [text]
         ids = []
-        for chunk in self.pattern.findall(text):
-            ids.extend(self._encode_chunk(list(chunk.encode("utf-8"))))
+        for part in parts:
+            if part in active:
+                ids.append(active[part])
+            else:
+                for chunk in self.pattern.findall(part):
+                    ids.extend(self._encode_chunk(list(chunk.encode("utf-8"))))
         return ids
 
     def register_special_tokens(self, special_tokens):
