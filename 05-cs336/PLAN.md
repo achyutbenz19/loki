@@ -61,34 +61,49 @@ This is the important table. The video gets me most of the way, but the spec is 
 
 Shared/reused as-is: embeddings, scaled dot-product attention, causal masking, multi-head split, pre-norm residual blocks, the training loop skeleton.
 
-## Order of attack (rewritten Thu night, after 04 landed)
+## Order of attack (rewritten Thu night)
 
-Where I actually am: `04-tokenizer/bpe.py` has **BasicTokenizer and RegexTokenizer working** — train / encode / decode, gpt4 split pattern, verified against independently computed merges, 19/20 local tests green. Karpathy exercise steps 1-2 done. Missing: special tokens (step 4).
+**Correction that reshaped this plan:** I had it ordered by test count, which is optimizing the VERIFIER instead of the goal — Goodhart, on the project whose whole theme is reward hacking. HYPOTHESIS says the goal is "implement the LLM pipeline FROM SCRATCH... and I can explain every component because I wrote it." The suite is the gate, not the objective.
 
-Every adapter is testable alone (tests supply reference weights), so this is ordered by value, not dependency.
+And "from scratch" means writing the components myself in pytorch — not avoiding pytorch. gpt.py is from scratch at the ARCHITECTURE level (Head, MultiHeadAttention, Block, residual stream) but leans on nn.Linear, nn.Embedding, nn.LayerNorm, F.softmax, F.cross_entropy, torch.optim.AdamW. This assignment is the same thing one level deeper: write those too.
 
-**1. Special tokens (~45m, unblocks everything else).** Both adapter signatures require `special_tokens`, so nothing in the tokenizer suite can be wired without it. `register_special_tokens` + an `allowed_special` path in encode that splits them out BEFORE the regex, so they're never merged into.
-Tests it lights up: `test_train_bpe_special_tokens`, `test_roundtrip_unicode_string_with_special_tokens`, `test_overlapping_special_tokens`, `test_encode_special_token_trailing_newlines`, `test_encode_special_token_double_newline_non_whitespace`. Let the tests define the edge cases — don't invent semantics.
+So the real target is my transformer rebuilt as a MODERN model with every primitive mine.
 
-**2. Wire `run_train_bpe` + `get_tokenizer` (~30m).** Thin shims over my classes. One conversion to get right: minbpe stores `merges = {(int,int): int}`, CS336 wants `list[tuple[bytes, bytes]]`. Same information, different shape. Do NOT write a second implementation.
-Expect a big block of `test_tokenizer.py` to go green here.
+### What's actually new vs gpt.py
 
-**3. The `matches_tiktoken` tests (~2h).** Karpathy exercise step 3: recover_merges from `enc._mergeable_ranks` + the GPT-4 byte permutation. He explicitly permits copying `recover_merges`. This is where most of the remaining 25 live.
+| gpt.py (2019-style) | here (2026-style) |
+|---|---|
+| LayerNorm | **RMSNorm** — no mean subtraction, no bias. The centering does nothing; dropping it is cheaper and just as good |
+| ReLU FFN, 2 matrices, 4x | **SwiGLU** — 3 matrices, `w2(SiLU(w1 x) * w3 x)`, d_ff 8/3x. A learned gate, not a fixed threshold |
+| learned position table | **RoPE** — rotate q/k by angle ∝ position, inside attention. Dot products then depend on RELATIVE offset, and context can be extended after training (impossible with a table) |
+| nn.Linear / nn.Embedding | mine, with the spec'd init |
+| F.softmax / F.cross_entropy | mine, numerically stable (subtract the max; logsumexp) |
+| torch.optim.AdamW | mine — moment buffers, bias correction, decoupled decay |
+| no schedule, no clipping | cosine w/ warmup + global-L2 grad clipping |
+| tensor in RAM | np.memmap loader + checkpointing |
 
-**4. Quick wins (~3h, 7 tests):** softmax → cross_entropy → gradient_clipping → AdamW → cosine schedule → get_batch → checkpointing. All concepts I own; AdamW-from-scratch is the fiddliest.
+### Order (highest learning first, cheapest tiebreak)
 
-**5. Model (~4-6h, 13 tests):** linear → embedding → silu → rmsnorm → swiglu → sdpa → mha → **rope** → mha+rope → block → full lm.
-RoPE is the park risk — new math, and both of my hardest walls this week (derivative definition, tensor backprop) were new math specifically, not new code. If it stalls, park it like part 4 and take the other 8.
+1. **softmax + cross_entropy** (~1h, 2 tests). The content is numerical stability: exp(1000) is inf, so subtract the max first — mathematically a no-op, numerically the difference between working and NaN. I've used F.cross_entropy for six days without looking inside.
+2. **AdamW + cosine schedule + grad clipping** (~2h, 3 tests). Opening the optimizer I've been driving blind.
+3. **RMSNorm → SiLU → SwiGLU** (~1.5h, 3 tests). Small, and the contrast against my LayerNorm/ReLU is the lesson.
+4. **Linear + Embedding** (~30m, 2 tests). Mechanical; I know both.
+5. **RoPE** (~2-4h, 2 tests). The one worth the day — in every frontier model, explained well nowhere. PARK RISK: both of my hardest walls this week were new MATH (derivative definition, tensor backprop), not new code. If it stalls past ~45 min of real struggle, take the rest and come back.
+6. **sdpa → mha → block → full lm** (~2h, 5 tests). Assembly; I've written all of it once already.
+7. **get_batch (memmap) + checkpointing** (~1h, 2 tests). Also the pieces a TinyStories run would need.
 
-**Explicitly deferred:** `test_train_bpe_speed` (the 1.5s clock — a profiling grind, teaches less per hour than RoPE) and the TinyStories run (needs a finished tokenizer + hours of wall clock).
+### Tokenizer wiring — only if there's time
 
-## Schedule (revised Thu night)
+`04-tokenizer/bpe.py` is done (20/20 on my own tests). Wiring it to `run_train_bpe` / `get_tokenizer` is 28 tests but it's CONNECTING work, not building work — the four mismatches are: they pass a file path not a string; merges as `list[tuple[bytes,bytes]]` not `{(int,int):int}`; vocab_size INCLUDES specials (500 with 1 special = 243 merges); the tokenizer is constructed from given vocab+merges rather than trained. Plus `encode_iterable` (lazy generator, memory-tested) and specials on by default.
+High test count, low learning. Do it last.
 
-- **Thu** ✅ tokenizer video + BasicTokenizer + RegexTokenizer, 19/20 local
-- **Fri** — CS336 only, in the order above. Realistic: **15-25 / 48**, with the tokenizer block being most of it
-- **Sat** — buffer + demo. Whatever Friday didn't close, plus the FRICTION readout
+### Deferred on purpose
+- `test_train_bpe_speed` (1.5s clock) — profiling grind
+- TinyStories end-to-end — plumbing, not from-scratch work
+- exercise step 3 / matches_tiktoken
 
-Honest note: 48/48 is not happening by Saturday — the full assignment is 14-22h against my own measured rate. A partial green with a clear account of what the rest needs is the deliverable, and it matches the week's other finding: the number matters less than knowing why it is what it is.
+## Realistic target
+**15-25 / 48**, weighted toward §3-5. The full assignment is 14-22h against my own measured rate (~4-6h building per hour of video, six days of logged data). A partial green with a clear account of what the rest needs is the deliverable — same finding as the val-loss curve: the number matters less than knowing why it is what it is.
 
 ## Gate
 
