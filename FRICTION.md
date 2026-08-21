@@ -172,6 +172,8 @@ Meta: the algorithm was the easy part. The hard part was a dense pattern I could
 5. **Prerequisite gaps surfaced only by building** (~15): +namedtuple .values, +UnboundLocalError scoping, +arange vs indexing, +Optimizer API (which the handout taught two pages earlier — reading gap, not resource gap).
 6. **NEW: spec-to-code without a demonstration** — the assignment-1 finding. Symptoms: can't start without pseudocode, exponent/axis transcription bugs, notation walls. Not a knowledge gap; a missing scaffold layer. Fix that works: restore the watch-then-build loop with the course's own lectures.
 
+[Aug 21] [honest accounting — the 4/48 carries an asterisk] "Green with every bug understood" overstates it (I called this out when the AI claimed it). Reality: the tests surfaced the failures, the AI diagnosed most of them and supplied the skeletons (clipping's two-pass structure, AdamW's step layout, logsumexp's step list); I filled in expressions and understood the fixes after they were pointed. Genuinely mine: the fixes once located, the logsumexp derivation from my own part-4 chain after catching myself copying, softmax once the missing exp was named. By my own gate — "because I wrote it" — these four are asterisked like the day-1 operator family: understood after the fact, not independently produced. The lecture-first redo is what clears the asterisk.
+
 ---
 
 ## FULL-CHAT SWEEP (re-read of the entire week, Aug 17) — everything previously missed
