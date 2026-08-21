@@ -115,4 +115,5 @@ High test count, low learning. Do it last.
 | date | passing | note |
 |---|---|---|
 | Aug 19 | 0/48 | baseline, env verified |
-| Aug 20 | 0/48 | tokenizer built but not yet wired — 19/20 green on my own `04-tokenizer/test_bpe.py` |
+| Aug 20 | 0/48 | tokenizer built but not yet wired — 20/20 green on my own `04-tokenizer/test_bpe.py` |
+| Aug 21 | **3/48** | nn_utils done: softmax, cross_entropy, gradient_clipping. All 18 non-tokenizer adapters wired |
