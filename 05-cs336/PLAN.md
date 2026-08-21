@@ -97,3 +97,4 @@ Honest note: 48/48 is not happening by Saturday — the full assignment is 14-22
 | date | passing | note |
 |---|---|---|
 | Aug 19 | 0/48 | baseline, env verified |
+| Aug 20 | 0/48 | tokenizer built but not yet wired — 19/20 green on my own `04-tokenizer/test_bpe.py` |
