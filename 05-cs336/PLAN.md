@@ -109,7 +109,7 @@ High test count, low learning. Do it last.
 
 Goal unchanged: every component from scratch, mine, explained because I wrote it. The TIMELINE moved, not the goalpost — assignment 1 continues past the sprint week, with the loop restored to watch-then-build: CS336 lecture 3 (architectures: RMSNorm/SwiGLU/RoPE) -> implement from memory -> tests as judge. Lecture 2 (pytorch + resource accounting) slots in alongside. Spec-to-code without a demonstration was the broken mode, not the material.
 
-Done so far: nn_utils complete (softmax, cross_entropy, gradient_clipping), AdamW passing. 4/48 — understood after the fact, not independently produced (asterisked in FRICTION; the lecture-first redo clears it) — the schedule function and everything after resumes lecture-first.
+Cleared the days scaffolded implementations (nn_utils + AdamW) back to stubs — redoing them lecture-first so theyre mine. Gate back to 0/48 by choice; the asterisk gets cleared by rewriting, not by keeping the green. — the schedule function and everything after resumes lecture-first.
 
 ## Realistic target
 **15-25 / 48**, weighted toward §3-5. The full assignment is 14-22h against my own measured rate (~4-6h building per hour of video, six days of logged data). A partial green with a clear account of what the rest needs is the deliverable — same finding as the val-loss curve: the number matters less than knowing why it is what it is.
