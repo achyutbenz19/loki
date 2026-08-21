@@ -61,30 +61,34 @@ This is the important table. The video gets me most of the way, but the spec is 
 
 Shared/reused as-is: embeddings, scaled dot-product attention, causal masking, multi-head split, pre-norm residual blocks, the training loop skeleton.
 
-## Order of attack
+## Order of attack (rewritten Thu night, after 04 landed)
 
-Dependency-free — every adapter is testable alone (tests pass in reference weights). So order by value/effort, not by dependency.
+Where I actually am: `04-tokenizer/bpe.py` has **BasicTokenizer and RegexTokenizer working** — train / encode / decode, gpt4 split pattern, verified against independently computed merges, 19/20 local tests green. Karpathy exercise steps 1-2 done. Missing: special tokens (step 4).
 
-**1. Quick wins (~2h, 7 tests):** softmax → cross_entropy → gradient_clipping → AdamW → cosine schedule → get_batch → checkpointing.
-Why first: builds the `uv run pytest` loop, gets green on the board, and AdamW-from-scratch is the thing I just learned conceptually today.
+Every adapter is testable alone (tests supply reference weights), so this is ordered by value, not dependency.
 
-**2. Model (~3-4h, 13 tests):** linear → embedding → silu → rmsnorm → swiglu → sdpa → mha → rope → mha+rope → block → full lm.
-Why second: fresh off the GPT video. The three new pieces are RMSNorm, SwiGLU, RoPE — everything else I've written.
+**1. Special tokens (~45m, unblocks everything else).** Both adapter signatures require `special_tokens`, so nothing in the tokenizer suite can be wired without it. `register_special_tokens` + an `allowed_special` path in encode that splits them out BEFORE the regex, so they're never merged into.
+Tests it lights up: `test_train_bpe_special_tokens`, `test_roundtrip_unicode_string_with_special_tokens`, `test_overlapping_special_tokens`, `test_encode_special_token_trailing_newlines`, `test_encode_special_token_double_newline_non_whitespace`. Let the tests define the edge cases — don't invent semantics.
 
-**3. Tokenizer (~4-6h, 28 tests):** train_bpe (correctness) → train_bpe (speed, 1.5s) → Tokenizer class (encode/decode/encode_iterable/special tokens).
-Why last: biggest chunk, needs the tokenizer video first, and it's the one where the speed test bites.
+**2. Wire `run_train_bpe` + `get_tokenizer` (~30m).** Thin shims over my classes. One conversion to get right: minbpe stores `merges = {(int,int): int}`, CS336 wants `list[tuple[bytes, bytes]]`. Same information, different shape. Do NOT write a second implementation.
+Expect a big block of `test_tokenizer.py` to go green here.
 
-**4. TinyStories run:** encode the corpus with my tokenizer to a uint16 .npy → memmap → train. Overnight, single GPU/MPS.
+**3. The `matches_tiktoken` tests (~2h).** Karpathy exercise step 3: recover_merges from `enc._mergeable_ranks` + the GPT-4 byte permutation. He explicitly permits copying `recover_merges`. This is where most of the remaining 25 live.
 
-## Schedule (demo Fri Aug 21)
+**4. Quick wins (~3h, 7 tests):** softmax → cross_entropy → gradient_clipping → AdamW → cosine schedule → get_batch → checkpointing. All concepts I own; AdamW-from-scratch is the fiddliest.
 
-- **Tue (today)** — finish GPT video, train, consolidate gpt.py. CS336 cloned + red baseline ✅
-- **Wed** — AM: quick wins (7 tests). PM: tokenizer video + train_bpe. EOD target: **~20/48**
-- **Thu** — AM: Tokenizer class → 28 done. PM: model adapters. Launch TinyStories encode + training run. EOD target: **48/48**
-- **Fri** — TinyStories samples in, demo + FRICTION readout
-- **Sat** — buffer: whatever Thu didn't close, optional part-4 re-entry
+**5. Model (~4-6h, 13 tests):** linear → embedding → silu → rmsnorm → swiglu → sdpa → mha → **rope** → mha+rope → block → full lm.
+RoPE is the park risk — new math, and both of my hardest walls this week (derivative definition, tensor backprop) were new math specifically, not new code. If it stalls, park it like part 4 and take the other 8.
 
-Cut from the original plan (honest, not goalpost-moving): GPT-2 124M on 8xH100 (cost + setup risk), SFT chat model (that's WEEK2.md), OpenWebText §7.4, the leaderboard.
+**Explicitly deferred:** `test_train_bpe_speed` (the 1.5s clock — a profiling grind, teaches less per hour than RoPE) and the TinyStories run (needs a finished tokenizer + hours of wall clock).
+
+## Schedule (revised Thu night)
+
+- **Thu** ✅ tokenizer video + BasicTokenizer + RegexTokenizer, 19/20 local
+- **Fri** — CS336 only, in the order above. Realistic: **15-25 / 48**, with the tokenizer block being most of it
+- **Sat** — buffer + demo. Whatever Friday didn't close, plus the FRICTION readout
+
+Honest note: 48/48 is not happening by Saturday — the full assignment is 14-22h against my own measured rate. A partial green with a clear account of what the rest needs is the deliverable, and it matches the week's other finding: the number matters less than knowing why it is what it is.
 
 ## Gate
 
