@@ -24,7 +24,9 @@ Run: `cd 05-cs336/assignment1-basics && uv sync && uv run pytest`
 
 - env solved: uv, python 3.13, torch 2.11, einops, regex, tiktoken. `uv sync` done
 - **48 tests collected, 48 red** (all `NotImplementedError`) — baseline measured
-- data downloading: TinyStoriesV2 train 2.07 GB + valid 0.02 GB. OpenWebText (4.3 GB gz) skipped — only needed for §7.4, which is cut
+- data: TinyStoriesV2 **valid** (21 MB) kept. The 2.1 GB train file was deleted — §7 experiments are deferred, and it's one command to get back:
+  `curl -L -o data/TinyStoriesV2-GPT4-train.txt https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt`
+  OpenWebText (4.3 GB) never downloaded — only §7.4, which is cut
 - the repo ships its own CLAUDE.md agent policy: explain, review, debug — never write student code. Same as my rule in HYPOTHESIS.md. No conflict.
 
 ## The 48 tests, by file
