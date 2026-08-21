@@ -127,18 +127,18 @@ if __name__ == "__main__":
 
     rgx = report(RegexTokenizer(), text, torture, 276, "RegexTokenizer (gpt4 split)")
 
-    # the point of the split pattern: no token may span two categories
-    def crossers(tok):
+    # The invariant the split pattern buys: every learned token must itself be
+    # exactly ONE chunk. Ask the pattern directly instead of re-deriving its rules
+    # by hand — that admits b' the' and b"'s" (single chunks by design) and rejects
+    # b'the ' (two chunks), with no category taxonomy to keep in sync.
+    def spans_boundary(tok, pattern=Pattern.GPT4):
         out = []
         for i in range(256, len(tok.vocab)):
             t = tok.vocab[i].decode("utf-8", errors="replace")
-            body = t[1:] if t.startswith(" ") else t  # gpt4 attaches ONE leading space by design
-            kinds = {"alpha" if c.isalpha() else "digit" if c.isdigit()
-                        else "space" if c.isspace() else "punct" for c in body}
-            if len(kinds) > 1:
+            if re.findall(pattern, t) != [t]:
                 out.append(tok.vocab[i])
         return out
 
-    print("\n--- category crossers (should be [] for regex) ---")
-    print("basic:", crossers(basic))
-    print("regex:", crossers(rgx))
+    print("\n--- tokens spanning a chunk boundary (should be [] for regex) ---")
+    print("basic:", spans_boundary(basic))
+    print("regex:", spans_boundary(rgx))
