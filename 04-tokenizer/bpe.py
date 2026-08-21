@@ -6,16 +6,12 @@ class Pattern(StrEnum):
     GPT2 = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     GPT4 = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
 
-def get_pattern(name="gpt4"):
-    """'gpt4' / 'gpt2' (case-insensitive) -> the pattern string."""
-    return Pattern[name.upper()]
-
 VOCAB_SIZE = 276
 GPT2_SPLIT_PATTERN = Pattern.GPT2
 GPT4_SPLIT_PATTERN = Pattern.GPT4
 
-def get_stats(ids):
-    stats = {}
+def get_stats(ids, counts=None):
+    stats = {} if counts is None else counts
     for i in zip(ids, ids[1:]):
         stats[i] = stats.get(i, 0) + 1
     return stats
@@ -146,23 +142,20 @@ if __name__ == "__main__":
 
     basic = report(BasicTokenizer(), text, torture, 276, "BasicTokenizer")
 
-    if "RegexTokenizer" in dir():
-        rgx = report(RegexTokenizer(), text, torture, 276, "RegexTokenizer (gpt4 split)")
+    rgx = report(RegexTokenizer(), text, torture, 276, "RegexTokenizer (gpt4 split)")
 
-        # the point of the split pattern: no token may span two categories
-        def crossers(tok):
-            out = []
-            for i in range(256, len(tok.vocab)):
-                t = tok.vocab[i].decode("utf-8", errors="replace")
-                kinds = {"alpha" if c.isalpha() else "digit" if c.isdigit()
-                         else "space" if c.isspace() else "punct" for c in t}
-                kinds.discard("punct")
-                if len(kinds) > 1:
-                    out.append(tok.vocab[i])
-            return out
+    # the point of the split pattern: no token may span two categories
+    def crossers(tok):
+        out = []
+        for i in range(256, len(tok.vocab)):
+            t = tok.vocab[i].decode("utf-8", errors="replace")
+            kinds = {"alpha" if c.isalpha() else "digit" if c.isdigit()
+                        else "space" if c.isspace() else "punct" for c in t}
+            kinds.discard("punct")
+            if len(kinds) > 1:
+                out.append(tok.vocab[i])
+        return out
 
-        print("\n--- category crossers (should be [] for regex) ---")
-        print("basic:", crossers(basic))
-        print("regex:", crossers(rgx))
-    else:
-        print("\n(RegexTokenizer not written yet)")
+    print("\n--- category crossers (should be [] for regex) ---")
+    print("basic:", crossers(basic))
+    print("regex:", crossers(rgx))
