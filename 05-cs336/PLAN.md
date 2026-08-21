@@ -100,6 +100,7 @@ So the real target is my transformer rebuilt as a MODERN model with every primit
 High test count, low learning. Do it last.
 
 ### Deferred on purpose
+- if I ever do the speed test or train a tokenizer on a multi-GB corpus, the handout's §2.5 approach is: find `<|endoftext|>` boundaries in the file, hand each chunk to a separate process, merge the pre-token counts. Upstream shipped a `find_chunk_boundaries` helper for this (deleted — unrunnable snippet, and writing it myself is the point).
 - `test_train_bpe_speed` (1.5s clock) — profiling grind
 - TinyStories end-to-end — plumbing, not from-scratch work
 - exercise step 3 / matches_tiktoken
